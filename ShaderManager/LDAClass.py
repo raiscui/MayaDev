@@ -1,4 +1,5 @@
 import pymel.core as pc
+from functools import partial
 
 class LDA():
     
@@ -28,7 +29,15 @@ class LDA():
             pc.deleteUI("lookdevAssistant")
         
         # Main window
-        self.globalWidgets['window'] = pc.window("lookdevAssistant", title="Arnold - Lookdev assistant", sizeable=False, h=360, w=500)
+        self.globalWidgets['window'] = pc.window("lookdevAssistant", menuBar=True, title="Arnold Lookdev assistant", sizeable=False, h=360, w=500)
+        
+        # Menu bar
+        self.globalWidgets['windowMenuCreate'] = pc.menu(label="Create")
+        pc.menuItem(label='new aiStandard', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'aiStandard'))
+        pc.menuItem(label='new File', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'file'))
+        pc.menuItem(label='new ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'ygColorCorrect'))
+        #self.globalWidgets['windowMenuConnect'] = pc.menu(label="Connect")
+        #pc.menuItem(label='File to attribute', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'file'))
         
         # Main layout : 2 columns / 1 for the list of the ai* shaders / 1 to access selected shader attributes
         self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,100), (2,350)])
@@ -142,12 +151,42 @@ class LDA():
     def selectShader(self, *args):
         pc.select(self.selectedShader, r=True)
         
-    def connectTo(self, outNode, outAttr, inNode, inAttr):
+#    def connectTo(self, outNode, outAttr, inNode, inAttr):
+#        
+#        outN = pc.PyNode(outNode)
+#        inN = pc.PyNode(inNode)
+#        outOp = outNode + '.' + outAttr
+#        inOp = inNode + '.' + inAttr
         
-        outN = pc.PyNode(outNode)
-        inN = pc.PyNode(inNode)
-        outOp = outNode + '.' + outAttr
-        inOp = inNode + '.' + inAttr
+    def createNode(self, type, *args):
         
+        if type == 'aiStandard':
+            # Ask for name
+            name = self.inputDialog("Create aiStandard", "Enter a name for the node: ")
+            
+            # Create and assign shader
+            aiStd = pc.shadingNode('aiStandard', asShader = True, name=name)
+            aiStdSg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name=name+'SG')
+            aiStd.outColor >> aiStdSg.surfaceShader 
+
+        if type == 'file':
+            # Ask for name
+            name = self.inputDialog("Create file", "Enter a name for the node: ")
+            # Ask for location of the file
+            location = pc.fileDialog2(fm=1, dialogStyle=2)
+            myTex = pc.shadingNode('file', asTexture=True, name=name)     
+            myTex.fileTextureName.set(location) 
+            
+        if type == 'ygColorCorrect':
+            # Ask for name
+            name = self.inputDialog("Create ygColorCorrect", "Enter a name for the node: ")
+            aiStd = pc.shadingNode('ygColorCorrect', asShader = True, name=name)
+    
+    def inputDialog(self, title, message):
+        
+        result = pc.promptDialog(title=title, message=message, button=['OK', 'Cancel'], defaultButton='OK', cancelButton='Cancel', dismissString='Cancel')
+        if result == 'OK':
+            text = pc.promptDialog(query=True, text=True)
+            return text
         
         
