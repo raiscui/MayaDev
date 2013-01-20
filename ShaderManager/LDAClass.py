@@ -36,8 +36,13 @@ class LDA():
         pc.menuItem(label='new aiStandard', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'aiStandard'))
         pc.menuItem(label='new File', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'file'))
         pc.menuItem(label='new ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'ygColorCorrect'))
-        #self.globalWidgets['windowMenuConnect'] = pc.menu(label="Connect")
-        #pc.menuItem(label='File to attribute', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'file'))
+        self.globalWidgets['windowMenuConnect'] = pc.menu(label="Connect")
+        pc.menuItem(label='File to ygColorCorrect to shader', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
+        pc.menuItem(label='File to ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
+        pc.menuItem(label='Node to node', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
+        
+#       import maya.cmds as mc
+#       mc.ConnectionEditor()
         
         # Main layout : 2 columns / 1 for the list of the ai* shaders / 1 to access selected shader attributes
         self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,100), (2,350)])
@@ -64,7 +69,7 @@ class LDA():
         # Test if there is any aiStandard shader in the scene
         aiList = pc.ls(exactType='aiStandard')
         if len(aiList) == 0:
-            raise Exception("No aiStandard shaders in the scene. Please create one before launching the lookdev assistant.")
+            pc.warning("No aiStandard shaders in the scene. Please create one before launching the lookdev assistant.")
         else:
             # Clear the list
             self.sListWidgets['list'].removeAll()
@@ -91,46 +96,53 @@ class LDA():
         self.sAttrWidgets['miscButtonsLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'right'), parent=self.sAttrWidgets['layout'])
         pc.text(l="Selected: ", parent=self.sAttrWidgets['miscButtonsLayout'])
         pc.textField(enable=False, parent=self.sAttrWidgets['miscButtonsLayout'], text=self.selectedShader)
+        #pc.button(label="Rename", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.renameShader)
+        #pc.button(label="Delete", parent=self.sAttrWidgets['miscButtonsLayout'])
         pc.button(label="Select", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.selectShader)
         pc.button(label="Assign to selection", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.assignToSelection)
     
         # DIFFUSE
         ###################
         # Label
-        self.sAttrWidgets['diffuseLabelLayout'] = pc.rowColumnLayout(nc=3, columnSpacing=[(1,5), (2,5), (3,5)], columnAlign=(1, 'right'), columnAttach=(2, 'both', 0), columnWidth=(2, 150), parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['diffuseLabelLayout'] = pc.rowColumnLayout(nc=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
         pc.text(label='Diffuse ', fn='boldLabelFont', parent=self.sAttrWidgets['diffuseLabelLayout'])
         pc.separator(height=20, style='in', parent=self.sAttrWidgets['diffuseLabelLayout'])
         
         # Controls
-        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.color' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.Kd' % self.selectedShader, pre=3, parent=self.sAttrWidgets['layout'])
-        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.diffuseRoughness' % self.selectedShader, pre=3, parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['diffuseControlsLayout'] = pc.columnLayout(parent=self.sAttrWidgets['layout'])
+        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.color' % self.selectedShader, parent=self.sAttrWidgets['diffuseControlsLayout'])
+        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.Kd' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
+        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.diffuseRoughness' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
         
         # SPECULAR
         ###################
         # Label
-        self.sAttrWidgets['specularLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'right'), columnAttach=(2, 'both', 0), columnWidth=(2, 200), parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['specularLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
         pc.text(label='Specular ', fn='boldLabelFont', parent=self.sAttrWidgets['specularLabelLayout'])
         pc.separator(height=20, style='in')
         
         # Controls
-        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.KsColor' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ks' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrEnumOptionMenuGrp(label="BRDF", w=200, cw=[(1,50)], ei=[(0,'stretched_phong'), (1,'ward_duer'), (2, 'cook_torrance')], at = '%s.specularBrdf' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], pre=4, at = '%s.specularRoughness' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrEnumOptionMenuGrp(label="Fresnel", w=200, cw=[(1,50)], ei=[(0,'No'), (1,'Yes')], at = '%s.specularFresnel' % self.selectedShader, parent=self.sAttrWidgets['layout'])
-        pc.attrFieldSliderGrp(label="% at N", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ksn' % self.selectedShader, parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['specularControlsLayout'] = pc.columnLayout(parent=self.sAttrWidgets['layout'])
+        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.KsColor' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ks' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrEnumOptionMenuGrp(label="BRDF", w=200, cw=[(1,50)], ei=[(0,'stretched_phong'), (1,'ward_duer'), (2, 'cook_torrance')], at = '%s.specularBrdf' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], pre=4, at = '%s.specularRoughness' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrEnumOptionMenuGrp(label="Fresnel", w=200, cw=[(1,50)], ei=[(0,'No'), (1,'Yes')], at = '%s.specularFresnel' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="% at N", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ksn' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
     
         # BUMP MAPPING
         ###################
         # Label
-        self.sAttrWidgets['bumpLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'right'), columnAttach=(2, 'both', 0), columnWidth=(2, 200), parent=self.sAttrWidgets['layout'])
-        pc.text(label='Bump Mapping ', fn='boldLabelFont', parent=self.sAttrWidgets['bumpLabelLayout'])
+        self.sAttrWidgets['bumpLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
+        pc.text(label='Bump ', fn='boldLabelFont', parent=self.sAttrWidgets['bumpLabelLayout'])
         pc.separator( height=20, style='in')
         
         # Controls
-        pc.attrNavigationControlGrp(label="Bump", cw=[(1,50), (2,120)], at = '%s.normalCamera' % self.selectedShader, parent=self.sAttrWidgets['layout'])
+        pc.attrNavigationControlGrp(label="Map", cw=[(1,50), (2,120)], at = '%s.normalCamera' % self.selectedShader, parent=self.sAttrWidgets['layout'])
 
+        # Test
+        #pc.columnLayout(self.sAttrWidgets['diffuseControlsLayout'], edit=True, enable=False)
+        
     def removeShaderAttributesUI(self):
         
         # Remove current UI if it already exists
@@ -158,9 +170,9 @@ class LDA():
 #        outOp = outNode + '.' + outAttr
 #        inOp = inNode + '.' + inAttr
         
-    def createNode(self, type, *args):
+    def createNode(self, nodeType, *args):
         
-        if type == 'aiStandard':
+        if nodeType == 'aiStandard':
             # Ask for name
             name = self.inputDialog("Create aiStandard", "Enter a name for the node: ")
             
@@ -169,7 +181,7 @@ class LDA():
             aiStdSg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name=name+'SG')
             aiStd.outColor >> aiStdSg.surfaceShader 
 
-        if type == 'file':
+        if nodeType == 'file':
             # Ask for name
             name = self.inputDialog("Create file", "Enter a name for the node: ")
             # Ask for location of the file
@@ -177,7 +189,7 @@ class LDA():
             myTex = pc.shadingNode('file', asTexture=True, name=name)     
             myTex.fileTextureName.set(location) 
             
-        if type == 'ygColorCorrect':
+        if nodeType == 'ygColorCorrect':
             # Ask for name
             name = self.inputDialog("Create ygColorCorrect", "Enter a name for the node: ")
             aiStd = pc.shadingNode('ygColorCorrect', asShader = True, name=name)
@@ -188,5 +200,14 @@ class LDA():
         if result == 'OK':
             text = pc.promptDialog(query=True, text=True)
             return text
+        
+    def renameShader(self, *args):
+        
+        result = self.inputDialog("Rename shader", "Enter new name: ")
+        shader = pc.PyNode(self.selectedShader)
+        pc.rename(shader, result)
+        self.refreshList()
+        
+
         
         
