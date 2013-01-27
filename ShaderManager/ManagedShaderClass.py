@@ -48,7 +48,7 @@ class LookdevAssistant:
     
     def reflectance(self, ior, k=0):
         """Return a reflectance at 0 degrees from a given IOR"""
-        result = ((ior - 1)**2 + k**2)/((ior + 1)**2 + k**2)
+        result = ((float(ior) - 1)**2 + float(k)**2)/((float(ior) + 1)**2 + float(k)**2)
         return result
     
     def selectAttributeInput(self, attribute):
@@ -95,7 +95,7 @@ class LookdevAssistant:
         print("#INFO# '{0}' // Connection found : {0}.{1} >> {2}".format(nodeName,conOrig, self.shaderName + "." + attribute))
         return conOrig   
                  
-    def toggleDisplayInputOnFlat(self, attribute):
+    def Maya_focusOn(self, attribute):
         """Displays attribute input on a aiUtility flat surface"""
         
         # Check if dummy shader exists
@@ -117,14 +117,14 @@ class LookdevAssistant:
             myNode.attr(conType).connect(aiUtility.color)
             
             # Select all objets with current shader and assign dummySHD
-            self.replaceMaterial(self.shaderName, 'dummySHD')
+            self.Maya_replaceMaterial(self.shaderName, 'dummySHD')
         else:
-            self.replaceMaterial('dummySHD', self.shaderName)
+            self.Maya_replaceMaterial('dummySHD', self.shaderName)
             print("#INFO# '{0}' // Deleting dummy shader.".format(self.shaderName))
             pc.delete('dummySHD')
             pc.delete('aiUtilitySG')
             
-    def replaceMaterial(self, mat1, mat2):
+    def Maya_replaceMaterial(self, mat1, mat2):
         """Replace current material mat1 by another material mat2"""
         pc.hyperShade(o=mat1)
         test = pc.ls(sl=1)

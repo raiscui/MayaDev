@@ -60,7 +60,7 @@ toto = at.Aton()'''
 #
 #pc.showWindow()
 
-test = ld.LDA()
+test = ld.LookDevAssistant()
 
 # test tototo
 
