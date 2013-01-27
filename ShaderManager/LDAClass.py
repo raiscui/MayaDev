@@ -12,6 +12,11 @@ class LDA():
         # Dictionnary containing all the UI elements for the shaders attributes
         self.sAttrWidgets= {}
         
+        # Check if MtoA is loaded
+        pluginsRunning = pc.pluginInfo(query=True, listPlugins=True)
+        if 'mtoa' not in pluginsRunning:
+            raise Exception("MtoA is not loaded! Please load it first then restart the script.")
+        
         # Build the UI
         self.buildUI()
         
@@ -36,10 +41,12 @@ class LDA():
         pc.menuItem(label='new aiStandard', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'aiStandard'))
         pc.menuItem(label='new File', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'file'))
         pc.menuItem(label='new ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.createNode, 'ygColorCorrect'))
-        self.globalWidgets['windowMenuConnect'] = pc.menu(label="Connect")
-        pc.menuItem(label='File to ygColorCorrect to shader', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
-        pc.menuItem(label='File to ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
-        pc.menuItem(label='Node to node', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.connectNodes, 'fileToYgToShd'))
+        self.globalWidgets['windowMenuSeeOnFlat'] = pc.menu(label="See on flat")
+        pc.menuItem(label='Diffuse Color', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.displayInputOnFlat, 'color'))
+        pc.menuItem(label='Specular Color', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.displayInputOnFlat, 'KsColor'))
+        pc.menuItem(label='Specular Roughness', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.displayInputOnFlat, 'specularRoughness'))
+        pc.menuItem(divider=True, parent=self.globalWidgets['windowMenuSeeOnFlat'])
+        pc.menuItem(label='Revert to aiStandard', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=self.revert)
         
 #       import maya.cmds as mc
 #       mc.ConnectionEditor()
@@ -93,12 +100,13 @@ class LDA():
         self.sAttrWidgets['layout'] = pc.columnLayout(parent=self.globalWidgets['sAttrLayout'], cal="left")
         
         # Buttons for selecting shader in AA and assign material to current selection
-        self.sAttrWidgets['miscButtonsLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'right'), parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['miscButtonsLayout'] = pc.rowColumnLayout( numberOfColumns=3, columnWidth=[(1,50), (2, 60), (3, 120)], parent=self.sAttrWidgets['layout'])
         pc.text(l="Selected: ", parent=self.sAttrWidgets['miscButtonsLayout'])
         pc.textField(enable=False, parent=self.sAttrWidgets['miscButtonsLayout'], text=self.selectedShader)
-        #pc.button(label="Rename", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.renameShader)
-        #pc.button(label="Delete", parent=self.sAttrWidgets['miscButtonsLayout'])
+        # Empty text to complete this row
+        pc.text(l="")
         pc.button(label="Select", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.selectShader)
+        pc.button(label="Rename", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.renameShader)
         pc.button(label="Assign to selection", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.assignToSelection)
     
         # DIFFUSE
@@ -163,13 +171,6 @@ class LDA():
     def selectShader(self, *args):
         pc.select(self.selectedShader, r=True)
         
-#    def connectTo(self, outNode, outAttr, inNode, inAttr):
-#        
-#        outN = pc.PyNode(outNode)
-#        inN = pc.PyNode(inNode)
-#        outOp = outNode + '.' + outAttr
-#        inOp = inNode + '.' + inAttr
-        
     def createNode(self, nodeType, *args):
         
         if nodeType == 'aiStandard':
@@ -180,6 +181,8 @@ class LDA():
             aiStd = pc.shadingNode('aiStandard', asShader = True, name=name)
             aiStdSg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name=name+'SG')
             aiStd.outColor >> aiStdSg.surfaceShader 
+            
+            self.refreshList()
 
         if nodeType == 'file':
             # Ask for name
@@ -207,6 +210,77 @@ class LDA():
         shader = pc.PyNode(self.selectedShader)
         pc.rename(shader, result)
         self.refreshList()
+        
+    def connectedTo(self, attribute):
+        """
+        Return the attribute from where the connection originated
+        This is useful to know if RGB->RGB or alpha->RGB
+        """
+        # TODO: Pour le cas du outAlpha, il faut tester si il y a des connections sur colorR, colorB, etc car
+        # c'est different de color tout court...
+        myShader = pc.PyNode(self.selectedShader)
+        connectionOrigin = myShader.attr(attribute).listConnections(c=True, p=True)
+        
+        if len(connectionOrigin) == 0:
+            pc.confirmDialog(title="toto", message="Nothing is connected to %s" % self.selectedShader+'.'+attribute)
+            return None, None
+        else:
+            conType = connectionOrigin[0][1].split('.')[1]
+            nodeName = connectionOrigin[0][1].split('.')[0]
+        
+            return nodeName, conType
+                 
+    def displayInputOnFlat(self, attribute, *args):
+        """Displays attribute input on a aiUtility flat surface"""
+        
+        # Check if dummy shader exists, create it if not
+        if len(pc.ls('dummySHD')) == 0:
+            print("#INFO# '{0}' // Dummy shader not present. Creating.".format(self.selectedShader))
+            # ShadingGroup creation
+            sg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name="aiUtilitySG")
+            # aiUtility creation
+            aiUtility = pc.shadingNode("aiUtility", asShader=True, name="dummySHD")
+            aiUtility.outColor >> sg.surfaceShader
+            # Set shade mode to flat
+            aiUtility.shadeMode.set('flat')
+        
+        # Get the aiUtility node    
+        aiUtility = pc.PyNode('dummySHD')
+        
+        # Clear connections if they exist
+        connections = aiUtility.listConnections(d=False, c=True, p=True)
+        for con in connections:
+            pc.disconnectAttr(con[1],con[0])
+            
+        # Return input node
+        inputNode = self.connectedTo(attribute)
+        
+        if inputNode != (None, None):
+            # Make the connections    
+            myNode = pc.PyNode(inputNode[0])
+                
+            if inputNode[1] == 'outAlpha':
+                myNode.attr(inputNode[1]).connect(aiUtility.color.colorR)
+                myNode.attr(inputNode[1]).connect(aiUtility.color.colorG)
+                myNode.attr(inputNode[1]).connect(aiUtility.color.colorB)
+            elif inputNode[1] == 'outColor':
+                myNode.attr(inputNode[1]).connect(aiUtility.color)
+                
+            # Select all objets with current shader and assign dummySHD
+            self.replaceMaterial(self.selectedShader, 'dummySHD')
+            
+    def replaceMaterial(self, mat1, mat2, *args):
+        """Replace current material mat1 by another material mat2"""
+        pc.hyperShade(o=mat1)
+        test = pc.ls(sl=1)
+        
+        if len(test) > 0:
+            pc.hyperShade(assign=mat2)
+            
+    def revert(self, *args):
+        """Revert back to the aiStandard"""
+        self.replaceMaterial('dummySHD', self.selectedShader)
+    
         
 
         
