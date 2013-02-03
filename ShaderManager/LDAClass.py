@@ -16,6 +16,10 @@ class LookDevAssistant():
         # Dictionnary containing all dynamic buttons
         self.dynamicButtons = {}
         
+        # Dictionnary containing all secondary UI
+        # - List existing nodes UI
+        self.listNodesWidgets = {}
+        
         # Check if MtoA is loaded
         pluginsRunning = pc.pluginInfo(query=True, listPlugins=True)
         if 'mtoa' not in pluginsRunning:
@@ -53,6 +57,10 @@ class LookDevAssistant():
         pc.menuItem(label='new aiStandard', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'aiStandard'))
         pc.menuItem(label='new File', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'file'))
         pc.menuItem(label='new ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'ygColorCorrect'))
+        #pc.menuItem(divider=True)
+        #pc.menuItem(label='Complete network', parent=self.globalWidgets['windowMenuCreate'], subMenu=True)
+        #pc.menuItem(l="use existing File...", c=partial(self.Maya_createFullNetwork, True))
+        #pc.menuItem(l="use new File", c=partial(self.Maya_createFullNetwork, False))
         # |-- See on flat Menu
         self.globalWidgets['windowMenuSeeOnFlat'] = pc.menu(label="See on flat")
         pc.menuItem(label='Diffuse Color', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.Maya_focusOn, 'color'))
@@ -62,16 +70,16 @@ class LookDevAssistant():
         pc.menuItem(label='Revert to aiStandard', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=self.Maya_revertToAiStd)
         
         # Main layout : 2 columns / 1 for the list of the ai* shaders / 1 to access selected shader attributes
-        self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,100), (2,240)])
+        self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 100), (2, 240)])
         
         # Shaders list layout
-        self.globalWidgets['sListLayout'] = pc.frameLayout( label='Shaders list', borderStyle='etchedIn', cll=True, h=360 ,parent=self.globalWidgets['mainLayout'])
+        self.globalWidgets['sListLayout'] = pc.frameLayout(label='Shaders list', borderStyle='etchedIn', cll=True, h=360 , parent=self.globalWidgets['mainLayout'])
         self.sListWidgets['layout'] = pc.columnLayout(parent=self.globalWidgets['sListLayout'])
         self.sListWidgets['list'] = pc.textScrollList(h=300, parent=self.sListWidgets['layout'])
         self.sListWidgets['listRefreshButton'] = pc.button(l='Refresh', w=95, c=self.UI_refreshShaders)
         
         # Shaders attributes layout
-        self.globalWidgets['sAttrLayout'] = pc.frameLayout( label='Shaders attributes', borderStyle='etchedIn', cll=True, h=300, parent=self.globalWidgets['mainLayout'] )
+        self.globalWidgets['sAttrLayout'] = pc.frameLayout(label='Shaders attributes', borderStyle='etchedIn', cll=True, h=300, parent=self.globalWidgets['mainLayout'])
         
         # Setup all callbacks
         self.UI_Callbacks()
@@ -135,11 +143,11 @@ class LookDevAssistant():
         self.sAttrWidgets['layout'] = pc.columnLayout(parent=self.globalWidgets['sAttrLayout'], cal="left")
         
         # Buttons for selecting shader in AA and assign material to current selection
-        self.sAttrWidgets['selectedShaderLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnWidth=[(1,50), (2, 170)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['selectedShaderLayout'] = pc.rowColumnLayout(numberOfColumns=2, columnWidth=[(1, 50), (2, 170)], parent=self.sAttrWidgets['layout'])
         pc.text(l="Selected: ", parent=self.sAttrWidgets['selectedShaderLayout'])
         pc.textField(enable=False, parent=self.sAttrWidgets['selectedShaderLayout'], text=self.selectedShader)
 
-        self.sAttrWidgets['miscButtonsLayout'] = pc.rowColumnLayout(numberOfColumns=3, columnWidth=[(1,50), (2, 60), (3, 120)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['miscButtonsLayout'] = pc.rowColumnLayout(numberOfColumns=3, columnWidth=[(1, 50), (2, 60), (3, 120)], parent=self.sAttrWidgets['layout'])
         pc.button(label="Select", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_selectShader)
         pc.button(label="Rename", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_renameShader)
         pc.button(label="Assign to selection", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_assignToSelection)
@@ -147,50 +155,50 @@ class LookDevAssistant():
         # DIFFUSE
         ###################
         # Label
-        self.sAttrWidgets['diffuseLabelLayout'] = pc.rowColumnLayout(nc=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['diffuseLabelLayout'] = pc.rowColumnLayout(nc=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60), (2, 150)], parent=self.sAttrWidgets['layout'])
         pc.text(label='Diffuse ', fn='boldLabelFont', parent=self.sAttrWidgets['diffuseLabelLayout'])
         pc.separator(height=20, style='in', parent=self.sAttrWidgets['diffuseLabelLayout'])
         
         # Controls
-        self.sAttrWidgets['diffuseControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,200),(2,30)], parent=self.sAttrWidgets['layout'])
-        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.color' % self.selectedShader, parent=self.sAttrWidgets['diffuseControlsLayout'])
+        self.sAttrWidgets['diffuseControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 200), (2, 30)], parent=self.sAttrWidgets['layout'])
+        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1, 50), (2, 30)], at='%s.color' % self.selectedShader, parent=self.sAttrWidgets['diffuseControlsLayout'])
         self.dynamicButtons['colorToggle'] = pc.iconTextButton(style='iconOnly', h=20, image1="disableForRendering.png", c=partial(self.Maya_toggleConnection, 'color'))
-        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.Kd' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
+        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1, 50), (2, 50)], min=0, max=1.0, at='%s.Kd' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
         pc.text(l="")
-        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], min=0, max=1.0, at='%s.diffuseRoughness' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
+        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1, 50), (2, 50)], min=0, max=1.0, at='%s.diffuseRoughness' % self.selectedShader, pre=3, parent=self.sAttrWidgets['diffuseControlsLayout'])
         pc.text(l="")
         
         # SPECULAR
         ###################
         # Label
-        self.sAttrWidgets['specularLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['specularLabelLayout'] = pc.rowColumnLayout(numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60), (2, 150)], parent=self.sAttrWidgets['layout'])
         pc.text(label='Specular ', fn='boldLabelFont', parent=self.sAttrWidgets['specularLabelLayout'])
         pc.separator(height=20, style='in')
         
         # Controls
-        self.sAttrWidgets['specularControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,200),(2,30)], parent=self.sAttrWidgets['layout'])
-        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1,50), (2,30)], at = '%s.KsColor' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        self.sAttrWidgets['specularControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 200), (2, 30)], parent=self.sAttrWidgets['layout'])
+        pc.attrColorSliderGrp(label="Color", w=200, cw=[(1, 50), (2, 30)], at='%s.KsColor' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         self.dynamicButtons['KsColorToggle'] = pc.iconTextButton(style='iconOnly', h=20, image1="disableForRendering.png", c=partial(self.Maya_toggleConnection, 'KsColor'))
-        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ks' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="Weight", w=200, cw=[(1, 50), (2, 50)], pre=3, at='%s.Ks' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         pc.text(l="")
-        pc.attrEnumOptionMenuGrp(label="BRDF", w=200, cw=[(1,50)], ei=[(0,'stretched_phong'), (1,'ward_duer'), (2, 'cook_torrance')], at = '%s.specularBrdf' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrEnumOptionMenuGrp(label="BRDF", w=200, cw=[(1, 50)], ei=[(0, 'stretched_phong'), (1, 'ward_duer'), (2, 'cook_torrance')], at='%s.specularBrdf' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         pc.text(l="")
-        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1,50), (2,50)], pre=4, at = '%s.specularRoughness' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="Rough", w=200, cw=[(1, 50), (2, 50)], pre=4, at='%s.specularRoughness' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         self.dynamicButtons['specularRoughnessToggle'] = pc.iconTextButton(style='iconOnly', h=20, image1="disableForRendering.png", c=partial(self.Maya_toggleConnection, 'specularRoughness'))
-        pc.attrEnumOptionMenuGrp(label="Fresnel", w=200, cw=[(1,50)], ei=[(0,'No'), (1,'Yes')], at = '%s.specularFresnel' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrEnumOptionMenuGrp(label="Fresnel", w=200, cw=[(1, 50)], ei=[(0, 'No'), (1, 'Yes')], at='%s.specularFresnel' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         pc.text(l="")
-        pc.attrFieldSliderGrp(label="% at N", w=200, cw=[(1,50), (2,50)], pre=3, at = '%s.Ksn' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
+        pc.attrFieldSliderGrp(label="% at N", w=200, cw=[(1, 50), (2, 50)], pre=3, at='%s.Ksn' % self.selectedShader, parent=self.sAttrWidgets['specularControlsLayout'])
         self.dynamicButtons['reflectance'] = pc.iconTextButton(style='iconOnly', h=20, image1="calculator.png", c=self.Maya_calculateReflectance)
         # BUMP MAPPING
         ###################
         # Label
-        self.sAttrWidgets['bumpLabelLayout'] = pc.rowColumnLayout( numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60),(2, 150)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['bumpLabelLayout'] = pc.rowColumnLayout(numberOfColumns=2, columnAlign=(1, 'center'), columnAttach=(2, 'both', 0), columnWidth=[(1, 60), (2, 150)], parent=self.sAttrWidgets['layout'])
         pc.text(label='Bump ', fn='boldLabelFont', parent=self.sAttrWidgets['bumpLabelLayout'])
-        pc.separator( height=20, style='in')
+        pc.separator(height=20, style='in')
         
         # Controls
-        self.sAttrWidgets['bumpControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,200),(2,30)], parent=self.sAttrWidgets['layout'])
-        pc.attrNavigationControlGrp(label="Map", cw=[(1,50), (2,120)], at = '%s.normalCamera' % self.selectedShader, parent=self.sAttrWidgets['bumpControlsLayout'])
+        self.sAttrWidgets['bumpControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 200), (2, 30)], parent=self.sAttrWidgets['layout'])
+        pc.attrNavigationControlGrp(label="Map", cw=[(1, 50), (2, 120)], at='%s.normalCamera' % self.selectedShader, parent=self.sAttrWidgets['bumpControlsLayout'])
         self.dynamicButtons['normalCameraToggle'] = pc.iconTextButton(style='iconOnly', h=20, image1="disableForRendering.png", c=partial(self.Maya_toggleConnection, 'normalCamera'))
 
         # Refresh connection state icons
@@ -210,13 +218,13 @@ class LookDevAssistant():
         for attribute in ('color', 'KsColor', 'specularRoughness', 'normalCamera'):
             
             # Connection state
-            connectionState = pc.shadingConnection(self.selectedShader+'.'+attribute, q=True, cs=True)
+            connectionState = pc.shadingConnection(self.selectedShader + '.' + attribute, q=True, cs=True)
             
             # If the connection is OK, we display the correct icon to disable it 
             if (connectionState):
-                pc.iconTextButton(self.dynamicButtons[attribute+'Toggle'], edit=True, image="disableForRendering.png")
+                pc.iconTextButton(self.dynamicButtons[attribute + 'Toggle'], edit=True, image="disableForRendering.png")
             else:
-                pc.iconTextButton(self.dynamicButtons[attribute+'Toggle'], edit=True, image="enableForRendering.png")
+                pc.iconTextButton(self.dynamicButtons[attribute + 'Toggle'], edit=True, image="enableForRendering.png")
                 
     def UI_removeAttributes(self):
         
@@ -229,6 +237,49 @@ class LookDevAssistant():
 ######################################## MAYA FUNCTIONS ########################################
 # > Functions that manipulate nodes in Maya 
 
+    def Maya_createFullNetwork(self, withFile, *args):
+        
+        if withFile:
+            print 'titi'
+            fileNode = self.Maya_listExistingNode('file')
+        else:
+            fileNode = self.Maya_createNode('file')
+            
+        #aiNode = self.Maya_createNode('aiStandard')
+        
+        # DiffCC
+        #diffCC = pc.shadingNode('ygColorCorrect', asShader=True, name='diffCC_' + aiNode)
+        # specCC
+        #specCC = pc.shadingNode('ygColorCorrect', asShader=True, name='specCC_' + aiNode)
+        # roughCC
+        #roughCC = pc.shadingNode('ygColorCorrect', asShader=True, name='roughCC_' + aiNode)
+        # bumpCC
+        #bumpCC = pc.shadingNode('ygColorCorrect', asShader=True, name='bumpCC_' + aiNode)
+        
+        # Bump node
+        #bumpNode = pc.shadingNode('bump2d', asUtility=True, name='bump_' + aiNode)
+        
+    def Maya_listExistingNode(self, type, *args):
+        
+        # Delete windows if already existing
+        if pc.window("listExistingNode", exists=True):
+            pc.deleteUI("listExistingNode")
+            
+        self.listNodesWidgets['window'] = pc.window("listExistingNode", title="Select a node", sizeable=False, h=150, w=150)
+        
+        self.listNodesWidgets['mainLayout'] = pc.columnLayout()
+        
+        listNodes = pc.ls(exactType=type)
+        print listNodes
+        self.listNodesWidgets['nodeCollection'] = pc.radioCollection()
+        
+        for node in listNodes:
+            pc.radioButton(l=node)
+            
+        pc.button(l="OK", c="selected = pc.radioCollection(self.listNodesWidgets['nodeCollection'], edit=True, select=True) ; print selected")  
+            
+        pc.showWindow(self.listNodesWidgets['window'])
+        
     def Maya_createNode(self, nodeType, *args):
         
         if nodeType == 'aiStandard':
@@ -236,24 +287,30 @@ class LookDevAssistant():
             name = self.User_inputDialog("Create aiStandard", "Enter a name for the node: ")
             
             # Create and assign shader
-            aiStd = pc.shadingNode('aiStandard', asShader = True, name=name)
-            aiStdSg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name=name+'SG')
+            aiStd = pc.shadingNode('aiStandard', asShader=True, name=name)
+            aiStdSg = pc.sets(renderable=True, noSurfaceShader=True, empty=True, name=name + 'SG')
             aiStd.outColor >> aiStdSg.surfaceShader 
             
             self.UI_refreshShaders()
+            
+            return(str(aiStd))
 
         if nodeType == 'file':
             # Ask for name
             name = self.User_inputDialog("Create file", "Enter a name for the node: ")
             # Ask for location of the file
             location = pc.fileDialog2(fm=1, dialogStyle=2)
-            myTex = pc.shadingNode('file', asTexture=True, name=name)     
-            myTex.fileTextureName.set(location) 
+            myTex = pc.shadingNode('file', asTexture=True, name=name)  
+            myTex.fileTextureName.set(location)
+            
+            return(str(myTex))
             
         if nodeType == 'ygColorCorrect':
             # Ask for name
             name = self.User_inputDialog("Create ygColorCorrect", "Enter a name for the node: ")
-            aiStd = pc.shadingNode('ygColorCorrect', asShader = True, name=name)
+            ygC = pc.shadingNode('ygColorCorrect', asShader=True, name=name)
+            
+            return(str(ygC))
         
     def Maya_assignToSelection(self, *args):
         """Assign current shader to selected objects"""
@@ -286,15 +343,15 @@ class LookDevAssistant():
         none
         """
         
-        if (self.Maya_getInput(attribute) == (None,None)):
-            self.User_warningDialog("Error", "Nothing is connected to %s" % self.selectedShader+'.'+attribute)
+        if (self.Maya_getInput(attribute) == (None, None)):
+            self.User_warningDialog("Error", "Nothing is connected to %s" % self.selectedShader + '.' + attribute)
         else:
-            connectionState = pc.shadingConnection(self.selectedShader+'.'+attribute, q=True, cs=True)
+            connectionState = pc.shadingConnection(self.selectedShader + '.' + attribute, q=True, cs=True)
             
             if (connectionState):
-                pc.shadingConnection(self.selectedShader+'.'+attribute, e=True, cs=False)
+                pc.shadingConnection(self.selectedShader + '.' + attribute, e=True, cs=False)
             else:
-                pc.shadingConnection(self.selectedShader+'.'+attribute, e=True, cs=True)
+                pc.shadingConnection(self.selectedShader + '.' + attribute, e=True, cs=True)
                 
             self.UI_refreshIcons()
     
@@ -334,7 +391,7 @@ class LookDevAssistant():
         # K input
         k = self.User_inputDialog("Extinction coefficient", "Enter the coefficient of extinction (k) or 0 if the material is an insulator: ")
     
-        result = ((float(ior) - 1)**2 + float(k)**2)/((float(ior) + 1)**2 + float(k)**2)
+        result = ((float(ior) - 1) ** 2 + float(k) ** 2) / ((float(ior) + 1) ** 2 + float(k) ** 2)
         
         # If result is between 0 and 1
         if (result >= 0 and result <= 1):
@@ -377,7 +434,7 @@ class LookDevAssistant():
         # Clear connections if they exist
         connections = aiUtility.listConnections(d=False, c=True, p=True)
         for con in connections:
-            pc.disconnectAttr(con[1],con[0])
+            pc.disconnectAttr(con[1], con[0])
             
         # Return input node
         inputNode = self.Maya_getInput(attribute)
@@ -398,7 +455,7 @@ class LookDevAssistant():
             # Select all objets with current shader and assign dummySHD
             self.Maya_replaceMaterial(self.selectedShader, 'dummySHD')
         else:
-            self.User_warningDialog("Error", "Nothing is connected to %s" % self.selectedShader+'.'+attribute)
+            self.User_warningDialog("Error", "Nothing is connected to %s" % self.selectedShader + '.' + attribute)
 
 ######################################## USER FUNCTIONS ########################################
 # > Functions that communicate with the user    
