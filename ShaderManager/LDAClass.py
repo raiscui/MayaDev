@@ -49,7 +49,7 @@ class LookDevAssistant():
             pc.deleteUI("lookdevAssistant")
         
         # Main window
-        self.globalWidgets['window'] = pc.window("lookdevAssistant", menuBar=True, title="Arnold Lookdev assistant", sizeable=False, h=360, w=500)
+        self.globalWidgets['window'] = pc.window("lookdevAssistant", menuBar=True, title="Arnold Lookdev assistant", sizeable=False, h=430, w=500)
         
         # Menu bar
         # |-- Creation Menu
@@ -57,33 +57,60 @@ class LookDevAssistant():
         pc.menuItem(label='new aiStandard', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'aiStandard'))
         pc.menuItem(label='new File', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'file'))
         pc.menuItem(label='new ygColorCorrect', parent=self.globalWidgets['windowMenuCreate'], c=partial(self.Maya_createNode, 'ygColorCorrect'))
-        #pc.menuItem(divider=True)
-        #pc.menuItem(label='Complete network', parent=self.globalWidgets['windowMenuCreate'], subMenu=True)
-        #pc.menuItem(l="use existing File...", c=partial(self.Maya_createFullNetwork, True))
-        #pc.menuItem(l="use new File", c=partial(self.Maya_createFullNetwork, False))
+        pc.menuItem(divider=True)
+        # --|-- Create complete network Menu
+        self.globalWidgets['completeNetworkMenu'] = pc.menuItem(label='Complete network', parent=self.globalWidgets['windowMenuCreate'], subMenu=True, pmc=self.UI_refreshMenu)
+        self.globalWidgets['fromFile'] = pc.menuItem(l="from existing File...", subMenu=True, p=self.globalWidgets['completeNetworkMenu'])
+        pc.menuItem(l="from new File", c=partial(self.Maya_createFullNetwork, False, ''), p=self.globalWidgets['completeNetworkMenu'])
+        
+        
         # |-- See on flat Menu
         self.globalWidgets['windowMenuSeeOnFlat'] = pc.menu(label="See on flat")
         pc.menuItem(label='Diffuse Color', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.Maya_focusOn, 'color'))
         pc.menuItem(label='Specular Color', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.Maya_focusOn, 'KsColor'))
         pc.menuItem(label='Specular Roughness', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.Maya_focusOn, 'specularRoughness'))
+        pc.menuItem(label='Bump', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=partial(self.Maya_focusOn, 'normalCamera'))
         pc.menuItem(divider=True, parent=self.globalWidgets['windowMenuSeeOnFlat'])
         pc.menuItem(label='Revert to aiStandard', parent=self.globalWidgets['windowMenuSeeOnFlat'], c=self.Maya_revertToAiStd)
         
         # Main layout : 2 columns / 1 for the list of the ai* shaders / 1 to access selected shader attributes
-        self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 100), (2, 240)])
+        self.globalWidgets['mainLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 150), (2, 240)])
         
         # Shaders list layout
-        self.globalWidgets['sListLayout'] = pc.frameLayout(label='Shaders list', borderStyle='etchedIn', cll=True, h=360 , parent=self.globalWidgets['mainLayout'])
+        self.globalWidgets['sListLayout'] = pc.frameLayout(label='Shaders list', borderStyle='etchedIn', cll=True, h=430 , parent=self.globalWidgets['mainLayout'])
         self.sListWidgets['layout'] = pc.columnLayout(parent=self.globalWidgets['sListLayout'])
-        self.sListWidgets['list'] = pc.textScrollList(h=300, parent=self.sListWidgets['layout'])
+        self.sListWidgets['list'] = pc.textScrollList(h=340, parent=self.sListWidgets['layout'])
         self.sListWidgets['listRefreshButton'] = pc.button(l='Refresh', w=95, c=self.UI_refreshShaders)
         
         # Shaders attributes layout
-        self.globalWidgets['sAttrLayout'] = pc.frameLayout(label='Shaders attributes', borderStyle='etchedIn', cll=True, h=300, parent=self.globalWidgets['mainLayout'])
+        self.globalWidgets['sAttrLayout'] = pc.frameLayout(label='Shaders attributes', borderStyle='etchedIn', cll=True, h=430, parent=self.globalWidgets['mainLayout'])
         
         # Setup all callbacks
         self.UI_Callbacks()
         
+    def UI_refreshMenu(self, *args):
+        """ Automatically refresh file list when user is click on Create > Complete network
+        
+        Keyword aguments:
+        none
+        
+        Return:
+        none
+        """
+        
+        # Delete existing UI
+        pc.deleteUI(self.globalWidgets['fromFile'])
+        
+        # List existing files
+        listNodes = pc.ls(exactType='file')
+        
+        # Recreate UI
+        self.globalWidgets['fromFile'] = pc.menuItem(l="from existing File...", subMenu=True, p=self.globalWidgets['completeNetworkMenu'])
+        
+        # Populate UI
+        for node in listNodes:
+            pc.menuItem(label=node, c=partial(self.Maya_createFullNetwork, True, node), p=self.globalWidgets['fromFile'])
+
     def UI_refreshShaders(self, *args):
         """Populate the list in the UI with all aiStandard shaders present in the scene.
         
@@ -151,6 +178,8 @@ class LookDevAssistant():
         pc.button(label="Select", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_selectShader)
         pc.button(label="Rename", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_renameShader)
         pc.button(label="Assign to selection", parent=self.sAttrWidgets['miscButtonsLayout'], c=self.Maya_assignToSelection)
+        self.sAttrWidgets['miscButtonsLayout2'] = pc.rowColumnLayout(nc=2, cw=[(1,150)], parent=self.sAttrWidgets['layout'])
+        pc.button(label="Select objects w/ mat", parent=self.sAttrWidgets['miscButtonsLayout2'], c=self.Maya_selectObjWithMat)
     
         # DIFFUSE
         ###################
@@ -197,9 +226,10 @@ class LookDevAssistant():
         pc.separator(height=20, style='in')
         
         # Controls
-        self.sAttrWidgets['bumpControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 200), (2, 30)], parent=self.sAttrWidgets['layout'])
+        self.sAttrWidgets['bumpControlsLayout'] = pc.rowColumnLayout(nc=2, cw=[(1, 200), (2, 30)], columnAlign=[(1,'right')], parent=self.sAttrWidgets['layout'])
         pc.attrNavigationControlGrp(label="Map", cw=[(1, 50), (2, 120)], at='%s.normalCamera' % self.selectedShader, parent=self.sAttrWidgets['bumpControlsLayout'])
         self.dynamicButtons['normalCameraToggle'] = pc.iconTextButton(style='iconOnly', h=20, image1="disableForRendering.png", c=partial(self.Maya_toggleConnection, 'normalCamera'))
+        pc.button(l='Select bump node', p=self.sAttrWidgets['bumpControlsLayout'], w=50, c=self.Maya_selectBumpNode)
 
         # Refresh connection state icons
         self.UI_refreshIcons()
@@ -237,48 +267,42 @@ class LookDevAssistant():
 ######################################## MAYA FUNCTIONS ########################################
 # > Functions that manipulate nodes in Maya 
 
-    def Maya_createFullNetwork(self, withFile, *args):
+    def Maya_createFullNetwork(self, withFile, nodeName, *args):
         
-        if withFile:
-            print 'titi'
-            fileNode = self.Maya_listExistingNode('file')
-        else:
-            fileNode = self.Maya_createNode('file')
-            
-        #aiNode = self.Maya_createNode('aiStandard')
+        if not withFile:
+            nodeName = self.Maya_createNode('file')
+
+        fileNode = pc.PyNode(nodeName)
+
+        aiName = self.Maya_createNode('aiStandard')
+        
+        aiNode = pc.PyNode(aiName)
         
         # DiffCC
-        #diffCC = pc.shadingNode('ygColorCorrect', asShader=True, name='diffCC_' + aiNode)
+        diffCC = pc.shadingNode('ygColorCorrect', asTexture=True, name='diffCC_' + aiNode)
         # specCC
-        #specCC = pc.shadingNode('ygColorCorrect', asShader=True, name='specCC_' + aiNode)
+        specCC = pc.shadingNode('ygColorCorrect', asTexture=True, name='specCC_' + aiNode)
         # roughCC
-        #roughCC = pc.shadingNode('ygColorCorrect', asShader=True, name='roughCC_' + aiNode)
+        roughCC = pc.shadingNode('ygColorCorrect', asTexture=True, name='roughCC_' + aiNode)
         # bumpCC
-        #bumpCC = pc.shadingNode('ygColorCorrect', asShader=True, name='bumpCC_' + aiNode)
+        bumpCC = pc.shadingNode('ygColorCorrect', asTexture=True, name='bumpCC_' + aiNode)
         
         # Bump node
-        #bumpNode = pc.shadingNode('bump2d', asUtility=True, name='bump_' + aiNode)
+        bumpNode = pc.shadingNode('bump2d', asUtility=True, name='bump_' + aiNode)
         
-    def Maya_listExistingNode(self, type, *args):
+        # Connect everything
+        fileNode.outColor >> diffCC.image
+        fileNode.outColor >> specCC.image
+        fileNode.outColor >> roughCC.image
+        fileNode.outColor >> bumpCC.image
         
-        # Delete windows if already existing
-        if pc.window("listExistingNode", exists=True):
-            pc.deleteUI("listExistingNode")
-            
-        self.listNodesWidgets['window'] = pc.window("listExistingNode", title="Select a node", sizeable=False, h=150, w=150)
+        bumpCC.outAlpha >> bumpNode.bumpValue
+        bumpNode.outNormal >> aiNode.normalCamera
         
-        self.listNodesWidgets['mainLayout'] = pc.columnLayout()
+        diffCC.outColor >> aiNode.color
+        specCC.outColor >> aiNode.KsColor
+        roughCC.outAlpha >> aiNode.specularRoughness
         
-        listNodes = pc.ls(exactType=type)
-        print listNodes
-        self.listNodesWidgets['nodeCollection'] = pc.radioCollection()
-        
-        for node in listNodes:
-            pc.radioButton(l=node)
-            
-        pc.button(l="OK", c="selected = pc.radioCollection(self.listNodesWidgets['nodeCollection'], edit=True, select=True) ; print selected")  
-            
-        pc.showWindow(self.listNodesWidgets['window'])
         
     def Maya_createNode(self, nodeType, *args):
         
@@ -322,9 +346,18 @@ class LookDevAssistant():
         # If everything is ok, assign current shader to selection
         pc.hyperShade(assign=self.selectedShader)
         
+    def Maya_selectBumpNode(self, *args):
+        
+        titi = self.Maya_getInput(self.selectedShader, 'normalCamera')
+        pc.select(titi[0], r=True)
+    
     def Maya_selectShader(self, *args):
         """Select the shader in the AA"""
         pc.select(self.selectedShader, r=True)
+        
+    def Maya_selectObjWithMat(self, *args):
+        """Select the shader in the AA"""
+        pc.hyperShade(o=self.selectedShader)
         
     def Maya_renameShader(self, *args):
         
@@ -343,7 +376,7 @@ class LookDevAssistant():
         none
         """
         
-        if (self.Maya_getInput(attribute) == (None, None)):
+        if (self.Maya_getInput(self.selectedShader, attribute) == (None, None)):
             self.User_warningDialog("Error", "Nothing is connected to %s" % self.selectedShader + '.' + attribute)
         else:
             connectionState = pc.shadingConnection(self.selectedShader + '.' + attribute, q=True, cs=True)
@@ -355,14 +388,12 @@ class LookDevAssistant():
                 
             self.UI_refreshIcons()
     
-    def Maya_getInput(self, attribute):
+    def Maya_getInput(self, nodeName, attribute):
         """
         Return the attribute from where the connection originated
         This is useful to know if RGB->RGB or alpha->RGB
         """
-        # TODO: Pour le cas du outAlpha, il faut tester si il y a des connections sur colorR, colorB, etc car
-        # c'est different de color tout court...
-        myShader = pc.PyNode(self.selectedShader)
+        myShader = pc.PyNode(nodeName)
         connectionOrigin = myShader.attr(attribute).listConnections(c=True, p=True)
         
         if len(connectionOrigin) == 0:
@@ -437,13 +468,19 @@ class LookDevAssistant():
             pc.disconnectAttr(con[1], con[0])
             
         # Return input node
-        inputNode = self.Maya_getInput(attribute)
+        inputNode = self.Maya_getInput(self.selectedShader, attribute)
         
         print inputNode
         
         if inputNode != (None, None):
             # Make the connections    
             myNode = pc.PyNode(inputNode[0])
+            
+            if inputNode[1] == 'outNormal':
+                # Bump case
+                inputNodeBump = self.Maya_getInput(inputNode[0], 'bumpValue')
+                
+                myNode = pc.PyNode(inputNodeBump[0])
                 
             if inputNode[1] == 'outAlpha':
                 myNode.attr(inputNode[1]).connect(aiUtility.color.colorR)
