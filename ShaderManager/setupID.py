@@ -2,27 +2,6 @@ import pymel.core as pc
 from functools import partial
 
 uiWidgets = {}
-
-def createRgbConstant(*args):
-    listSel = pc.ls(sl=1)
-    
-    for sel in listSel:
-        shape = sel.getShape()
-        
-        if shape.hasAttr('mtoa_constant_rgbMask'):
-            print "Attribute exists."
-        else:
-            print "No attribute.. Creating"
-            shape.addAttr('mtoa_constant_rgbMask', at='double3')
-            shape.addAttr('mtoa_constant_rgbMaskX', at='double', p='mtoa_constant_rgbMask')
-            shape.addAttr('mtoa_constant_rgbMaskY', at='double', p='mtoa_constant_rgbMask')
-            shape.addAttr('mtoa_constant_rgbMaskZ', at='double', p='mtoa_constant_rgbMask')
-            shape.setAttr('mtoa_constant_rgbMask', [0, 0, 0])
-            
-            shape.setAttr('mtoa_constant_rgbMask', k=True)
-            shape.setAttr('mtoa_constant_rgbMaskX', k=True)
-            shape.setAttr('mtoa_constant_rgbMaskY', k=True)
-            shape.setAttr('mtoa_constant_rgbMaskZ', k=True)
             
 def removeRgbConstant(*args):
     
@@ -36,23 +15,48 @@ def removeRgbConstant(*args):
         else:
             print "Attribute does not exist."
             
-def setIdColor(color, *args):
+def recursiveAssign(selected, color):
+    # List relatives
+    relatives = pc.listRelatives(selected)
+    
+    # We scan if any relative is a group, if so we dig deeper
+    for relative in relatives:
+        if relative.type() == 'transform':
+            recursiveAssign(relative, color)
+            
+        # We assign color if everything is ok
+        elif relative.type() == 'mesh':
+            
+            # If the custom attribute is not in place already, we create it
+            if not relative.hasAttr('mtoa_constant_rgbMask'):
+                print "No attribute.. Creating"
+                relative.addAttr('mtoa_constant_rgbMask', at='double3')
+                relative.addAttr('mtoa_constant_rgbMaskX', at='double', p='mtoa_constant_rgbMask')
+                relative.addAttr('mtoa_constant_rgbMaskY', at='double', p='mtoa_constant_rgbMask')
+                relative.addAttr('mtoa_constant_rgbMaskZ', at='double', p='mtoa_constant_rgbMask')
+                relative.setAttr('mtoa_constant_rgbMask', [0, 0, 0])
+                
+                relative.setAttr('mtoa_constant_rgbMask', k=True)
+                relative.setAttr('mtoa_constant_rgbMaskX', k=True)
+                relative.setAttr('mtoa_constant_rgbMaskY', k=True)
+                relative.setAttr('mtoa_constant_rgbMaskZ', k=True)
+            
+            # We then set the color
+            print "Setting color '{0}' for mesh {1} ".format(color, relative)
+            relative.setAttr('mtoa_constant_rgbMaskX', color[0])
+            relative.setAttr('mtoa_constant_rgbMaskY', color[1])
+            relative.setAttr('mtoa_constant_rgbMaskZ', color[2])
+
+def setColor(color, *args):
     
     listSel = pc.ls(sl=1)
     
-    for sel in listSel:
-        
-        if sel.type() != 'mesh':
-            shape = sel.getShape()
-        else:
-            shape = sel
+    if len(listSel) == 0:
+        pc.confirmDialog(t="Error", message="Nothing selected.", icon='critical')
+    else:
+        for sel in listSel:
+            recursiveAssign(sel, color)
             
-        if shape.hasAttr('mtoa_constant_rgbMask'):
-            shape.setAttr('mtoa_constant_rgbMaskX', color[0])
-            shape.setAttr('mtoa_constant_rgbMaskY', color[1])
-            shape.setAttr('mtoa_constant_rgbMaskZ', color[2])
-        else:
-            print "Attribute does not exist."
 
 def setupNetwork(*args):
     
@@ -81,42 +85,31 @@ uiWidgets['window'] = pc.window("IDsetup", menuBar=True, title="Setup Attributes
 # Main layout
 uiWidgets['mainLayout'] = pc.columnLayout()
 
-
-uiWidgets['sub1'] = pc.columnLayout(p=uiWidgets['mainLayout'])
-pc.text(l="1) Select objects and create/remove attributes needed", p=uiWidgets['sub1'])
-pc.separator(h=10, p=uiWidgets['sub1'])
-
-uiWidgets['sub1_rc'] = pc.rowColumnLayout(w=220, nc=2, cw=[(1,100), (2,100)], parent=uiWidgets['sub1'])
-pc.button(l="Create attribute", c=createRgbConstant, parent=uiWidgets['sub1_rc'])
-pc.button(l="Delete attribute", c=removeRgbConstant, parent=uiWidgets['sub1_rc'])
-
-pc.separator(h=10, p=uiWidgets['sub1'])
-
 uiWidgets['sub2'] = pc.columnLayout(p=uiWidgets['mainLayout'])
-pc.text(l='2) Set desired color for selected objects.', parent=uiWidgets['sub2'])
+pc.text(l='1) Set desired color for selected objects.', parent=uiWidgets['sub2'])
 pc.separator(h=10, p=uiWidgets['sub2'])
 
 uiWidgets['sub2_rc'] = pc.rowColumnLayout(w=220, nc=2, cw=[(1,100), (2,100)], parent=uiWidgets['sub2'])
-pc.button(l="Red", ebg=True, bgc=[1, 0, 0], c=partial(setIdColor, [1, 0, 0]), p=uiWidgets['sub2_rc'])
-pc.button(l="Green", ebg=True, bgc=[0, 1, 0], c=partial(setIdColor, [0, 1, 0]), p=uiWidgets['sub2_rc'])
-pc.button(l="Blue", ebg=True, bgc=[0, 0, 1], c=partial(setIdColor, [0, 0, 1]), p=uiWidgets['sub2_rc'])
-pc.button(l="Cyan", ebg=True, bgc=[0, 1, 1], c=partial(setIdColor, [0, 1, 1]), p=uiWidgets['sub2_rc'])
-pc.button(l="Yellow", ebg=True, bgc=[1, 1, 0], c=partial(setIdColor, [1, 1, 0]), p=uiWidgets['sub2_rc'])
-pc.button(l="Magenta", ebg=True, bgc=[1, 0, 1], c=partial(setIdColor, [1, 0, 1]), p=uiWidgets['sub2_rc'])
-pc.button(l="Black", ebg=True, bgc=[0, 0, 0], c=partial(setIdColor, [0, 0, 0]), p=uiWidgets['sub2_rc'])
-pc.button(l="White", ebg=True, bgc=[1, 1, 1], c=partial(setIdColor, [1, 1, 1]), p=uiWidgets['sub2_rc'])
+pc.button(l="Red", ebg=True, bgc=[1, 0, 0], c=partial(setColor, [1, 0, 0]), p=uiWidgets['sub2_rc'])
+pc.button(l="Green", ebg=True, bgc=[0, 1, 0], c=partial(setColor, [0, 1, 0]), p=uiWidgets['sub2_rc'])
+pc.button(l="Blue", ebg=True, bgc=[0, 0, 1], c=partial(setColor, [0, 0, 1]), p=uiWidgets['sub2_rc'])
+pc.button(l="Cyan", ebg=True, bgc=[0, 1, 1], c=partial(setColor, [0, 1, 1]), p=uiWidgets['sub2_rc'])
+pc.button(l="Yellow", ebg=True, bgc=[1, 1, 0], c=partial(setColor, [1, 1, 0]), p=uiWidgets['sub2_rc'])
+pc.button(l="Magenta", ebg=True, bgc=[1, 0, 1], c=partial(setColor, [1, 0, 1]), p=uiWidgets['sub2_rc'])
+pc.button(l="Black", ebg=True, bgc=[0, 0, 0], c=partial(setColor, [0, 0, 0]), p=uiWidgets['sub2_rc'])
+pc.button(l="White", ebg=True, bgc=[1, 1, 1], c=partial(setColor, [1, 1, 1]), p=uiWidgets['sub2_rc'])
 
 pc.separator(h=10, p=uiWidgets['sub2'])
 
 uiWidgets['sub3'] = pc.columnLayout(p=uiWidgets['mainLayout'])
-pc.text(l='3) Create nodes to output to a custom AOV', parent=uiWidgets['sub3'])
+pc.text(l='2) Create nodes to output to a custom AOV', parent=uiWidgets['sub3'])
 pc.separator(h=10, p=uiWidgets['sub3'])
 
 pc.button(l="Setup nodes network", c=setupNetwork, p=uiWidgets['sub3'])
 
 pc.separator(h=10, p=uiWidgets['sub3'])
 
-pc.text(l="4) Finally, do not forget to create a custom AOV \n and plug rgbMask_SHD.color to the AOV default\nshader. Thanks for using this awesome script.", align='left')
+pc.text(l="3) Finally, do not forget to create a custom AOV \n and plug rgbMask_SHD.color to the AOV default\nshader. Thanks for using this script.", align='left')
 
 pc.separator(h=10, p=uiWidgets['sub3'])
 
