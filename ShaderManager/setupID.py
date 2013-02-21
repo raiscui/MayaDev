@@ -9,7 +9,6 @@ def createRgbConstant(*args):
     for sel in listSel:
         shape = sel.getShape()
         
-        
         if shape.hasAttr('mtoa_constant_rgbMask'):
             print "Attribute exists."
         else:
@@ -42,8 +41,12 @@ def setIdColor(color, *args):
     listSel = pc.ls(sl=1)
     
     for sel in listSel:
-        shape = sel.getShape()
         
+        if sel.type() != 'mesh':
+            shape = sel.getShape()
+        else:
+            shape = sel
+            
         if shape.hasAttr('mtoa_constant_rgbMask'):
             shape.setAttr('mtoa_constant_rgbMaskX', color[0])
             shape.setAttr('mtoa_constant_rgbMaskY', color[1])
