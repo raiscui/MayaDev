@@ -1,21 +1,47 @@
 import pymel.core as pc
+from functools import partial
 
-def applyToSelected(*args):
+def prepareBatch(transfert, *args):
     
-    selectedObjects = pc.ls(sl=1)
-    
+    # Retrieving values from UI
     subdivType = pc.radioButtonGrp(uiWidgets['subdivType'], q=1, sl=1)
     subdivIt = pc.intSliderGrp(uiWidgets['subdivIterations'], q=1, value=1)
     autobump = pc.checkBox(uiWidgets['autobump'],q=1, value=1)
     
-    for object in selectedObjects:
+    # Get the selected objects
+    selections = pc.ls(sl=1)
+    
+    # If none, execution stops here
+    if len(selections) == 0:
+        pc.confirmDialog(t="Error", message="Nothing selected.", icon='critical')
+    # Else, we batch set the primary visibility 
+    else:
+        print "BATCH SET SMOOTH"
         
-        shape = object.getShape()
-        
-        shape.setAttr('aiSubdivType', subdivType-1)
-        shape.setAttr('aiSubdivIterations', subdivIt)
-        shape.setAttr('aiDispAutobump', autobump)
+        for sel in selections:
+            applySmooth(sel, subdivType, subdivIt, autobump, transfert)
 
+def applySmooth(selected, subdivType, subdivIt, autobump, transfert):
+    
+    # List relatives
+    relatives = pc.listRelatives(selected)
+    
+    # We scan if any relative is a group, if so we dig deeper
+    for relative in relatives:
+        if relative.type() == 'transform':
+            applySmooth(relative, subdivType, subdivIt, autobump, transfert)
+            
+        # We assign values if everything is ok
+        elif relative.type() == 'mesh':
+                
+            if not transfert:
+                relative.setAttr('aiSubdivType', subdivType-1)
+                relative.setAttr('aiSubdivIterations', subdivIt)
+            else:
+                relative.setAttr('aiSubdivType', 1)
+                relative.setAttr('aiSubdivIterations', relative.getAttr('smoothLevel'))
+                
+            relative.setAttr('aiDispAutobump', autobump)
 # Dictionnary that contains all UI elements
 uiWidgets = {}
 
@@ -47,7 +73,14 @@ pc.separator(h=5, style='none', parent=uiWidgets['layout'])
 uiWidgets['applyButtonLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,100),(2, 100)])
 
 pc.text(l='')
-pc.button(l='Apply to selected', c=applyToSelected)
+pc.button(l='Apply to selected', c=partial(prepareBatch, False))
+
+pc.setParent('..')
+
+uiWidgets['copyLayout'] = pc.rowColumnLayout(nc=2, cw=[(1,100),(2, 150)])
+
+pc.text(l='')
+pc.button(l='Copy from smooth preview', c=partial(prepareBatch, True))
 
 pc.setParent('..')
 
