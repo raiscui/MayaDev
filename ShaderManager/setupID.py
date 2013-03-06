@@ -1,53 +1,70 @@
 import pymel.core as pc
 from functools import partial
+import mtoa.aovs as aovs
 
 uiWidgets = {}
             
-def removeRgbConstant(*args):
-    
-    listSel = pc.ls(sl=1)
-    
-    for sel in listSel:
-        shape = sel.getShape()
-        
-        if shape.hasAttr('mtoa_constant_rgbMask'):
-            shape.deleteAttr('mtoa_constant_rgbMask')
-        else:
-            print "Attribute does not exist."
+#def removeRgbConstant(*args):
+#    
+#    listSel = pc.ls(sl=1)
+#    
+#    for sel in listSel:
+#        shape = sel.getShape()
+#        
+#        if shape.hasAttr('mtoa_constant_rgbMask'):
+#            shape.deleteAttr('mtoa_constant_rgbMask')
+#        else:
+#            print "Attribute does not exist."
             
-def recursiveAssign(selected, color):
+def recursiveAssign(attribute, selected, color):
+    
     # List relatives
     relatives = pc.listRelatives(selected)
     
     # We scan if any relative is a group, if so we dig deeper
     for relative in relatives:
         if relative.type() == 'transform':
-            recursiveAssign(relative, color)
+            recursiveAssign(attribute, relative, color)
             
         # We assign color if everything is ok
         elif relative.type() == 'mesh':
             
             # If the custom attribute is not in place already, we create it
-            if not relative.hasAttr('mtoa_constant_rgbMask'):
+            if not relative.hasAttr(attribute):
                 print "No attribute.. Creating"
-                relative.addAttr('mtoa_constant_rgbMask', at='double3')
-                relative.addAttr('mtoa_constant_rgbMaskX', at='double', p='mtoa_constant_rgbMask')
-                relative.addAttr('mtoa_constant_rgbMaskY', at='double', p='mtoa_constant_rgbMask')
-                relative.addAttr('mtoa_constant_rgbMaskZ', at='double', p='mtoa_constant_rgbMask')
-                relative.setAttr('mtoa_constant_rgbMask', [0, 0, 0])
+                relative.addAttr(attribute, at='double3')
+                relative.addAttr(attribute+'X', at='double', p=attribute)
+                relative.addAttr(attribute+'Y', at='double', p=attribute)
+                relative.addAttr(attribute+'Z', at='double', p=attribute)
+                relative.setAttr(attribute, [0, 0, 0])
                 
-                relative.setAttr('mtoa_constant_rgbMask', k=True)
-                relative.setAttr('mtoa_constant_rgbMaskX', k=True)
-                relative.setAttr('mtoa_constant_rgbMaskY', k=True)
-                relative.setAttr('mtoa_constant_rgbMaskZ', k=True)
+                relative.setAttr(attribute, k=True)
+                relative.setAttr(attribute+'X', k=True)
+                relative.setAttr(attribute+'Y', k=True)
+                relative.setAttr(attribute+'Z', k=True)
             
             # We then set the color
             print "Setting color '{0}' for mesh {1} ".format(color, relative)
-            relative.setAttr('mtoa_constant_rgbMaskX', color[0])
-            relative.setAttr('mtoa_constant_rgbMaskY', color[1])
-            relative.setAttr('mtoa_constant_rgbMaskZ', color[2])
+            relative.setAttr(attribute+'X', color[0])
+            relative.setAttr(attribute+'Y', color[1])
+            relative.setAttr(attribute+'Z', color[2])
 
 def setColor(color, *args):
+    
+    # Get current AOV name
+    aov = pc.radioButtonGrp(uiWidgets['aovs'], q=1, select=1)
+    
+    if aov == 1:
+        aovName = 'mtoa_constant_rgbMask'
+    elif aov == 2:
+        aovName = 'mtoa_constant_rgbMask1'
+    elif aov == 3:
+        aovName = 'mtoa_constant_rgbMask2'
+        
+    if aovName is None:
+        raise Exception('Error while determining which AOV to focus on.')
+    
+    print "AOV Name: %s" % aovName
     
     listSel = pc.ls(sl=1)
     
@@ -55,22 +72,35 @@ def setColor(color, *args):
         pc.confirmDialog(t="Error", message="Nothing selected.", icon='critical')
     else:
         for sel in listSel:
-            recursiveAssign(sel, color)
+            recursiveAssign(aovName, sel, color)
             
 
-def setupNetwork(*args):
+def setupNetwork(aovName, *args):
     
-    # aiUserDataColor
-    dataColor = pc.shadingNode('aiUserDataColor', asShader=True, name='rgbMaskDataColor')
-    dataColor.setAttr('colorAttrName', 'rgbMask', type='string')
-    # aiWriteColor
-    writeColor = pc.shadingNode('aiWriteColor', asShader=True, name='rgbMaskWriteColor')
-    # Target aiStandard
-    aiStd = pc.shadingNode('surfaceShader', asShader = True, name='rgbMask_SHD')
-    
-    # Make connections
-    dataColor.outColor >> writeColor.beauty
-    writeColor.outColor >> aiStd.outColor
+    # If already existing, do nothing
+    listShd = pc.ls(aovName+'_SHD')
+    if len(listShd) == 0:
+        # aiUserDataColor
+        dataColor = pc.shadingNode('aiUserDataColor', asShader=True, name=aovName+'DataColor')
+        dataColor.setAttr('colorAttrName', aovName, type='string')
+        # aiWriteColor
+        writeColor = pc.shadingNode('aiWriteColor', asShader=True, name=aovName+'WriteColor')
+        # Target aiStandard
+        aiStd = pc.shadingNode('surfaceShader', asShader = True, name=aovName+'_SHD')
+        
+        # Make connections
+        dataColor.outColor >> writeColor.beauty
+        writeColor.outColor >> aiStd.outColor
+        
+        # Creates AOV
+        aovs.AOVInterface().addAOV('id_'+aovName)
+        idAov = pc.PyNode('aiAOV_id_'+aovName)
+        
+        # Connect the shader previously created to the default shader input of the AOV
+        aiStd.outColor >> idAov.defaultValue
+    else:
+        print "Network already in place. Skipping setup."
+
 
 def close(*args):
     
@@ -84,6 +114,14 @@ uiWidgets['window'] = pc.window("IDsetup", menuBar=True, title="Setup Attributes
 
 # Main layout
 uiWidgets['mainLayout'] = pc.columnLayout()
+
+uiWidgets['sub1'] = pc.columnLayout(p=uiWidgets['mainLayout'])
+pc.text(l='0) Select ID AOV where colors will be set.', parent=uiWidgets['sub1'])
+pc.separator(h=10, p=uiWidgets['sub1'])
+
+uiWidgets['aovs'] = pc.radioButtonGrp(nrb=3, labelArray3=['rgbMask', 'rgbMask1', 'rgbMask2'], sl=1, cw3=[75,75,75])
+
+pc.separator(h=10, p=uiWidgets['sub1'])
 
 uiWidgets['sub2'] = pc.columnLayout(p=uiWidgets['mainLayout'])
 pc.text(l='1) Set desired color for selected objects.', parent=uiWidgets['sub2'])
@@ -105,11 +143,9 @@ uiWidgets['sub3'] = pc.columnLayout(p=uiWidgets['mainLayout'])
 pc.text(l='2) Create nodes to output to a custom AOV', parent=uiWidgets['sub3'])
 pc.separator(h=10, p=uiWidgets['sub3'])
 
-pc.button(l="Setup nodes network", c=setupNetwork, p=uiWidgets['sub3'])
-
-pc.separator(h=10, p=uiWidgets['sub3'])
-
-pc.text(l="3) Finally, do not forget to create a custom AOV \n and plug rgbMask_SHD.color to the AOV default\nshader. Thanks for using this script.", align='left')
+pc.button(l="Setup rgbMask AOV", c=partial(setupNetwork, 'rgbMask'), p=uiWidgets['sub3'])
+pc.button(l="Setup rgbMask1 AOV", c=partial(setupNetwork, 'rgbMask1'), p=uiWidgets['sub3'])
+pc.button(l="Setup rgbMask2 AOV", c=partial(setupNetwork, 'rgbMask2'), p=uiWidgets['sub3'])
 
 pc.separator(h=10, p=uiWidgets['sub3'])
 
