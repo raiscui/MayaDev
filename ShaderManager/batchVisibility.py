@@ -10,7 +10,7 @@ def exploreFurther(selected, visibility):
     relatives = pc.listRelatives(selected)
     
     for relative in relatives:
-        if relative.type() == 'transform':
+        if len(pc.listRelatives(relative)) != 0:
             exploreFurther(relative, visibility)
         elif relative.type() == 'mesh':
             print "Setting primary visibility of {0} to {1} ".format(relative, visibility)
