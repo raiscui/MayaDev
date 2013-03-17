@@ -4,12 +4,12 @@ import pymel.core as pc
 uiWidgets = {}
 
 # Explore recursively
-def exploreFurther(selected, visibility, reflect, refract):
+def exploreFurther(selected, visibility, reflect, refract, castShadows, receiveShadows):
     relatives = pc.listRelatives(selected)
     
     for relative in relatives:
         if len(pc.listRelatives(relative)) != 0:
-            exploreFurther(relative, visibility, reflect, refract)
+            exploreFurther(relative, visibility, reflect, refract, castShadows, receiveShadows)
         elif relative.type() == 'mesh':
             print "Setting primary visibility of {0} to {1} ".format(relative, visibility)
             relative.setAttr('primaryVisibility', visibility)
@@ -17,6 +17,10 @@ def exploreFurther(selected, visibility, reflect, refract):
             relative.setAttr('visibleInReflections', reflect)
             print "Setting visible in Refractions of {0} to {1} ".format(relative, refract)
             relative.setAttr('visibleInRefractions', refract)
+            print "Setting casts Shadows of {0} to {1} ".format(relative, castShadows)
+            relative.setAttr('castsShadows', castShadows)
+            print "Setting receives Shadows of {0} to {1} ".format(relative, receiveShadows)
+            relative.setAttr('receiveShadows', receiveShadows)
             
 def applyToSelected(*args):
     
@@ -24,6 +28,8 @@ def applyToSelected(*args):
     visibilityValue = pc.checkBox(uiWidgets['visibility'], q=1, value=1)
     reflectValue = pc.checkBox(uiWidgets['visibleReflect'], q=1, value=1)
     refractValue = pc.checkBox(uiWidgets['visibleRefract'], q=1, value=1)
+    castShadValue = pc.checkBox(uiWidgets['castShadows'], q=1, value=1)
+    receiveShadValue = pc.checkBox(uiWidgets['receiveShadows'], q=1, value=1)
 
     # Get the selected objects
     selections = pc.ls(sl=1)
@@ -36,9 +42,11 @@ def applyToSelected(*args):
         print "Batch setting visibility to [%s]" % visibilityValue
         print "Batch setting visible in Reflections to [%s]" % reflectValue
         print "Batch setting visible in Refractions to [%s]" % refractValue
+        print "Batch setting cast Shadows to [%s]" % castShadValue
+        print "Batch setting receive Shadows to [%s]" % receiveShadValue
         
         for sel in selections:
-            exploreFurther(sel, visibilityValue, reflectValue, refractValue)
+            exploreFurther(sel, visibilityValue, reflectValue, refractValue, castShadValue, receiveShadValue)
 
 def showUI():
     # Delete windows if already existing
@@ -53,6 +61,8 @@ def showUI():
     uiWidgets['visibility'] = pc.checkBox(label='Primary visibility', value=1)
     uiWidgets['visibleReflect'] = pc.checkBox(label='Visible in Reflections', value=1)
     uiWidgets['visibleRefract'] = pc.checkBox(label='Visible in Refractions', value=1)
+    uiWidgets['castShadows'] = pc.checkBox(label='Cast shadows', value=1)
+    uiWidgets['receiveShadows'] = pc.checkBox(label='Receive shadows', value=1)
     
     pc.button(l='Apply to selected', c=applyToSelected)
     
