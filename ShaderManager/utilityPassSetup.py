@@ -13,11 +13,11 @@ shadowShd.outColor >> shadowProxy.outColor
 
 # Creates AOV
 
-aovs.AOVInterface().addAOV("env_shadows")
-aovs.AOVInterface().addAOV("env_ao")
+aovs.AOVInterface().addAOV("shadows")
+aovs.AOVInterface().addAOV("ao")
 
-envShdAov = pc.PyNode('aiAOV_env_shadows')
-envAoAov = pc.PyNode('aiAOV_env_ao')
+envShdAov = pc.PyNode('aiAOV_shadows')
+envAoAov = pc.PyNode('aiAOV_ao')
 
 aoProxy.outColor >> envAoAov.defaultValue
 shadowProxy.outColor >> envShdAov.defaultValue
@@ -26,7 +26,7 @@ shadowProxy.outColor >> envShdAov.defaultValue
 aoShd = pc.PyNode(aoShd)
 shadowShd = pc.PyNode(shadowShd)
 
-aoShd.samples.set(8)
+aoShd.samples.set(5)
 shadowShd.shadowColor.set([1,1,1])
 
 

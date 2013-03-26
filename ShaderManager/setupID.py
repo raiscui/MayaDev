@@ -21,6 +21,11 @@ def recursiveAssign(attribute, selected, color):
     # List relatives
     relatives = pc.listRelatives(selected)
     
+    # Case where only shapes are selected
+    if (len(relatives) == 0 and selected.type() == 'mesh'):
+        relatives = []
+        relatives.append(selected)
+    
     # We scan if any relative is a group, if so we dig deeper
     for relative in relatives:
         if relative.type() == 'transform':
