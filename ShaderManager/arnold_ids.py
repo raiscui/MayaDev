@@ -65,6 +65,8 @@ def setColor(color, *args):
         aovName = 'mtoa_constant_rgbMask1'
     elif aov == 3:
         aovName = 'mtoa_constant_rgbMask2'
+    elif aov == 4:
+        aovName = 'mtoa_constant_rgbMask3'
         
     if aovName is None:
         raise Exception('Error while determining which AOV to focus on.')
@@ -115,7 +117,7 @@ def close(*args):
 if pc.window("IDsetup", exists=True):
     pc.deleteUI("IDsetup") 
     
-uiWidgets['window'] = pc.window("IDsetup", menuBar=True, title="Setup Attributes for ID AOV", sizeable=False, h=200, w=200)
+uiWidgets['window'] = pc.window("IDsetup", menuBar=True, title="Setup Attributes for ID AOV", sizeable=False, h=200, w=300)
 
 # Main layout
 uiWidgets['mainLayout'] = pc.columnLayout()
@@ -124,7 +126,7 @@ uiWidgets['sub1'] = pc.columnLayout(p=uiWidgets['mainLayout'])
 pc.text(l='0) Select ID AOV where colors will be set.', parent=uiWidgets['sub1'])
 pc.separator(h=10, p=uiWidgets['sub1'])
 
-uiWidgets['aovs'] = pc.radioButtonGrp(nrb=3, labelArray3=['rgbMask', 'rgbMask1', 'rgbMask2'], sl=1, cw3=[75,75,75])
+uiWidgets['aovs'] = pc.radioButtonGrp(nrb=4, labelArray4=['rgbMask', 'rgbMask1', 'rgbMask2', 'rgbMask3'], sl=1, cw4=[75,75,75,75])
 
 pc.separator(h=10, p=uiWidgets['sub1'])
 
@@ -151,6 +153,7 @@ pc.separator(h=10, p=uiWidgets['sub3'])
 pc.button(l="Setup rgbMask AOV", c=partial(setupNetwork, 'rgbMask'), p=uiWidgets['sub3'])
 pc.button(l="Setup rgbMask1 AOV", c=partial(setupNetwork, 'rgbMask1'), p=uiWidgets['sub3'])
 pc.button(l="Setup rgbMask2 AOV", c=partial(setupNetwork, 'rgbMask2'), p=uiWidgets['sub3'])
+pc.button(l="Setup rgbMask3 AOV", c=partial(setupNetwork, 'rgbMask3'), p=uiWidgets['sub3'])
 
 pc.separator(h=10, p=uiWidgets['sub3'])
 

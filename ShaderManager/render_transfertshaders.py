@@ -3,7 +3,6 @@ import pymel.core as pc
 # Main dictionnary
 infos = {}
 
-
 def saveShaders():
     # Prompt user with a string to search shader by names
     dialog = pc.promptDialog(title='Search joker',

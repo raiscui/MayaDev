@@ -1,7 +1,7 @@
 import pymel.core as pc
 from functools import partial
 
-class LookDevAssistant():
+class LookdevAssistant():
     
     def __init__(self):
         """Global constructor"""
@@ -506,3 +506,5 @@ class LookDevAssistant():
         
     def User_warningDialog(self, title, message):
         pc.confirmDialog(title=title, message=message)     
+
+newLda = LookdevAssistant()
