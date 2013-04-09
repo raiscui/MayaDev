@@ -2,7 +2,21 @@ import pymel.core as pc
 import mtoa.aovs as aovs
 
 # Contains the list of the passes with the first letter in capital
-passesList = ['Dust', 'Decals', 'Burn', 'Dots']
+dialog = pc.promptDialog(title='Dirt AOVs',
+                    message="Enter the dirt aovs you want created, separated by ';' :",
+                    button=['OK', 'Cancel'],
+                    defaultButton='OK',
+                    cancelButton='Cancel',
+                    dismissString='Cancel')
+
+userPrompt = pc.promptDialog(query=True, text=True)
+
+if userPrompt == 'Cancel':
+    exit("User exit.")
+else:
+    passesList = userPrompt.split(';')
+
+print passesList
 
 for element in passesList:
     
