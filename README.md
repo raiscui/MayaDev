@@ -1,4 +1,4 @@
 MayaDev
 =======
 
-MayaDev regroups a set of tools written in Python to automate various repetitives tasks in Maya.
+MayaDev is a set of tools written in Python to automate repetitives tasks in Maya.
