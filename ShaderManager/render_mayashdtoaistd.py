@@ -14,7 +14,7 @@ def populateList():
     elif shaderSel == 2:
         shaderType = 'blinn'
     elif shaderSel == 3:
-        shaderType = 'surfaceShader'
+        shaderType = 'phong'
         
     # Get shader prefix
     shaderPrefix = pc.textField(uiWidgets['shadersPrefix'], q=1, text=1)
@@ -32,39 +32,20 @@ def populateList():
     else:
         exit("Unknown error.")
     
-    for shader in listShaders:
-         
-        # This variable will contain all shape that have the current shader assigned
-        shapeList = []
-        
-        # Select shapes with the current shader
-        pc.hyperShade(o=shader)
-        selectedShapes = pc.ls(sl=1)
-        
-        # Clear selection, just for clarity
-        pc.select(cl=1)
-        
-        # Append the shape to the list
-        for shape in selectedShapes:
-            shapeList.append(str(shape))
-        
-        # Assign the list to the dictionnary with the key set to the shader name
-        infos[str(shader)] = shapeList
-    
 #    for info in infos.keys():
 #        print "#######################"
 #        print "### Shader: '%s'" % info
 #        print " - Found %s shape(s)" % len(infos[info])
 #        print "Shapes list: %s " % infos[info]
         
-    return infos
+    return listShaders
     
 def convertShaders(shdList):
     
     # List all file nodes in the scene
     fileNodes = pc.ls(exactType='file')
     
-    for shd in shdList.keys():
+    for shd in shdList:
         
         fileNodeName = ''
         
@@ -149,7 +130,7 @@ uiWidgets['sub1'] = pc.columnLayout(p=uiWidgets['mainLayout'])
 pc.text(l='+ Source shaders type:', parent=uiWidgets['sub1'])
 pc.separator(h=5, p=uiWidgets['sub1'])
 
-uiWidgets['shaderType'] = pc.radioButtonGrp(nrb=3, labelArray3=['lambert', 'blinn', 'surfaceShader'], sl=1, cw3=[75,50,75])
+uiWidgets['shaderType'] = pc.radioButtonGrp(nrb=3, labelArray3=['lambert', 'blinn', 'phong'], sl=1, cw3=[75,50,75])
 
 pc.separator(h=10, p=uiWidgets['sub1'])
 
