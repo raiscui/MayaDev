@@ -1,22 +1,22 @@
 import pymel.core as pc
 from functools import partial
-import mtoa.aovs as aovs
 
 uiWidgets = {}
+
             
-#def removeRgbConstant(*args):
-#    
-#    listSel = pc.ls(sl=1)
-#    
-#    for sel in listSel:
-#        shape = sel.getShape()
-#        
-#        if shape.hasAttr('mtoa_constant_rgbMask'):
-#            shape.deleteAttr('mtoa_constant_rgbMask')
-#        else:
-#            print "Attribute does not exist."
-            
-def recursiveAssign(selected):
+def displayShading(relative):
+    relative.overrideEnabled.set(1)
+    relative.overrideTexturing.set(0)
+    
+def removeOverrides(relative):
+    relative.overrideEnabled.set(0)
+    relative.overrideTexturing.set(1)
+    
+methods = {'displayShading': displayShading, 
+           'removeOverrides': removeOverrides
+           }
+
+def recursiveAssign(selected, function):
     
     # List relatives
     relatives = pc.listRelatives(selected)
@@ -29,16 +29,19 @@ def recursiveAssign(selected):
     # We scan if any relative is a group, if so we dig deeper
     for relative in relatives:
         if relative.type() == 'transform':
-            recursiveAssign(relative)
+            recursiveAssign(relative, function)
             
         # We assign color if everything is ok
         elif relative.type() == 'mesh':
             
             # If the custom attribute is not in place already, we create it
-            relative.overrideEnabled.set(1)
-            relative.overrideTexturing.set(0)
+            if function in methods:
+                methods[function](relative)
+            else:
+                raise Exception("Method %s is not implemented" % function)
 
-def setOverrides(*args):
+
+def setOverrides(function, *args):
     
     listSel = pc.ls(sl=1)
     
@@ -46,7 +49,7 @@ def setOverrides(*args):
         pc.confirmDialog(t="Error", message="Nothing selected.", icon='critical')
     else:
         for sel in listSel:
-            recursiveAssign(sel)
+            recursiveAssign(sel, function)
 
 def close(*args):
     
@@ -63,7 +66,8 @@ uiWidgets['mainLayout'] = pc.columnLayout()
 
 uiWidgets['sub3'] = pc.columnLayout(p=uiWidgets['mainLayout'])
 
-pc.button(l="Display in lambert shading", c=setOverrides, p=uiWidgets['sub3'])
+pc.button(l="Display shaded", c=partial(setOverrides, 'displayShading'), p=uiWidgets['sub3'])
+pc.button(l="Remove overrides", c=partial(setOverrides, 'removeOverrides'), p=uiWidgets['sub3'])
 
 
 pc.separator(h=10, p=uiWidgets['sub3'])
